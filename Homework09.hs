@@ -7,6 +7,34 @@ import System.IO
 import System.Exit
 
 
+-- warm-up mini grammar for sequences like aabab(a(b))
+
+type AB = [ABAtom]
+data ABAtom = LitA | LitB | Inner AB
+    deriving Show
+
+
+parseAB :: Descr f => f AB
+parseAB = recNonTerminal "ab" $ \ab ->
+    many1 (abAtom ab)
+
+abAtom ab = nonTerminal "atom" $
+    eLitA ab `orElse` eLitB ab `orElse` eInner ab
+
+eLitA _ = nonTerminal "litA" $
+    LitA <$ char 'a'
+
+eLitB _ = nonTerminal "litB" $
+    LitB <$ char 'b'
+
+eInner ab =
+    Inner   <$  char '('
+            <*> ab
+            <*  char ')'
+
+
+-- BNF grammar
+
 parseBNF :: Descr f => f BNF
 parseBNF = nonTerminal "bnf" $ many1 aProduction
 
