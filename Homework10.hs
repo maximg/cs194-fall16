@@ -90,10 +90,19 @@ instance Arbitrary a => Arbitrary (Tree a) where
 
 genTree :: Arbitrary a => Gen (Tree a)
 genTree = sized $ \size -> do
-  frequency [ (1, Leaf <$> arbitrary)
-            , (size, do t1 <- resize (size - 1) genTree
-                        t2 <- resize (size - 1) genTree
-                        return (Node t1 t2) )]
+  frequency [ (1, genLeaf)
+            , (size, genNode)]
+
+genLeaf :: Arbitrary a => Gen (Tree a)
+genLeaf = sized $ \size -> Leaf <$> arbitrary
+
+genNode :: Arbitrary a => Gen (Tree a)
+genNode = sized $ \size -> do
+    x <- choose (1, size)
+    l <- resize x arbitrary
+    r <- resize (size - x) arbitrary
+    return (Node l r)
+
 
 size :: Tree a -> Int
 size (Leaf _) = 1
