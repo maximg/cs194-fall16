@@ -24,8 +24,7 @@ getAtomX = _x . _point
 setAtomX :: Double -> Atom -> Atom
 setAtomX x a = setPoint (setX x (_point a)) a
 
-data Lens a b = Lens { overF :: forall t. Functor t => (b -> t b) -> (a -> t a)
-                     }
+type Lens a b = forall t. Functor t => (b -> t b) -> (a -> t a)
 
 point :: Lens Atom Point
 point = mkLens _point setPoint
@@ -37,24 +36,24 @@ y = mkLens _y setY
 
 
 setAtomX' :: Double -> Atom -> Atom
-setAtomX' = set (point `comp` x)
+setAtomX' = set (point . x)
 
 mkLens :: (a -> b) -> (b -> a -> a) -> Lens a b
-mkLens view set = Lens overF
+mkLens view set = overF
     where
         overF f a = (\b' -> set b' a) <$> f (view a)
 
 comp :: Lens a b -> Lens b c -> Lens a c
-comp l1 l2 = Lens (overF l1 . overF l2)
+comp l1 l2 = l1 . l2
 
 view :: Lens a b -> a -> b
-view l a = unC $ overF l MkC a
+view l a = unC $ l MkC a
 
 set :: Lens a b -> b -> a -> a
 set l x = over l (const x)
 
 over :: Lens a b -> (b -> b) -> (a -> a)
-over l f a = unI $ overF l f' a
+over l f a = unI $ l f' a
     where f' b = MkI (f b)
 
 newtype I x = MkI x
