@@ -22,26 +22,28 @@ setAtomX :: Double -> Atom -> Atom
 setAtomX x a = setPoint (setX x (_point a)) a
 
 data Lens a b = Lens { view :: a -> b
-                     , set :: b -> a -> a
+                     , over :: (b -> b) -> (a -> a)
                      }
 
 point :: Lens Atom Point
-point = Lens _point setPoint
+point = mkLens _point setPoint
 element :: Lens Atom String
-element = Lens _element setElement
+element = mkLens _element setElement
 x, y :: Lens Point Double
-x = Lens _x setX
-y = Lens _y setY
+x = mkLens _x setX
+y = mkLens _y setY
 
-comp :: Lens a b -> Lens b c -> Lens a c
--- comp (Lens v1 s1) (Lens v2 s2) = Lens (v2 . v1) (\x y -> s1 (s2 x (v1 y)) y)
-comp l1 l2 = Lens (view l2 . view l1) (\x y -> set l1 (set l2 x (view l1 y)) y)
 
 setAtomX' :: Double -> Atom -> Atom
 setAtomX' = set (point `comp` x)
 
-over :: Lens a b -> (b -> b) -> (a -> a)
-over l f x = set l (f (view l x)) x
+mkLens :: (a -> b) -> (b -> a -> a) -> Lens a b
+mkLens view set = Lens view over
+    where over f a = set (f (view a)) a
 
-comp' :: Lens a b -> Lens b c -> Lens a c
-comp' l1 l2 = Lens (view l2 . view l1) (\c -> over l1 (set l2 c))
+comp :: Lens a b -> Lens b c -> Lens a c
+comp l1 l2 = Lens (view l2 . view l1)
+                  (over l1 . over l2)
+
+set :: Lens a b -> b -> a -> a
+set l x = over l (const x)
