@@ -1,6 +1,8 @@
 
 {-# LANGUAGE RankNTypes #-}
 
+import Control.Applicative
+
 -- http://www.seas.upenn.edu/~cis194/fall16/lectures/14-lenses.html
 
 data Atom = Atom { _element :: String, _point :: Point } deriving Show
@@ -40,8 +42,7 @@ setAtomX' = set (point . x)
 
 mkLens :: (a -> b) -> (b -> a -> a) -> Lens a b
 mkLens view set = overF
-    where
-        overF f a = (\b' -> set b' a) <$> f (view a)
+    where overF f a = (\b' -> set b' a) <$> f (view a)
 
 comp :: Lens a b -> Lens b c -> Lens a c
 comp l1 l2 = l1 . l2
@@ -49,12 +50,15 @@ comp l1 l2 = l1 . l2
 view :: Lens a b -> a -> b
 view l a = unC $ l MkC a
 
-set :: Lens a b -> b -> a -> a
+set :: Traversal a b -> b -> a -> a
 set l x = over l (const x)
 
-over :: Lens a b -> (b -> b) -> (a -> a)
+over :: Traversal a b -> (b -> b) -> (a -> a)
 over l f a = unI $ l f' a
     where f' b = MkI (f b)
+
+--listOf :: Traversal a b -> a -> [a]
+--listOf l a = unCL $ l MkCL a
 
 newtype I x = MkI x
 unI :: I x -> x
@@ -70,3 +74,24 @@ unC (MkC b) = b
 
 instance Functor (C b) where
   fmap f (MkC b) = MkC b
+
+type Traversal a b = forall t . Applicative t => (b -> t b) -> (a -> t a)
+
+instance Applicative I where
+  pure x = MkI x
+  f <*> x = MkI $ (unI f) (unI x)
+
+-- does not compile, not sure why
+
+newtype CL b x = MkCL [b]
+
+unCL :: CL b x -> [b]
+unCL (MkCL b) = b
+
+instance Functor CL where
+  fmap f (MkCL a) = MkCL (map f a)
+
+instance Applicative (CL b) where
+  pure _ = MkCL []
+  MkCL bs1 <*> MkCL bs2 = MkCL (bs1 ++ bs2)
+
